@@ -12,3 +12,8 @@ This project serves as the backend for a hotel reservation system. It's built us
 - MongoDB
 - GoFiber
 - Docker
+
+to run mongo on docker
+```
+docker run --name mongodb -d -p 27017:27017 mongo:latest
+```
