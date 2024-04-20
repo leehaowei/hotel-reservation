@@ -2,6 +2,7 @@ package db
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/leehaowei/hotel-reservation/types"
 	"go.mongodb.org/mongo-driver/bson"
@@ -13,8 +14,13 @@ const (
 	userColl = "users"
 )
 
+type Dropper interface {
+	Drop(context.Context) error
+}
+
 // UserStore act as an abstraction layer of the db (dao/store)
 type UserStore interface {
+	Dropper
 	GetUserByID(context.Context, string) (*types.User, error)
 	GetUsers(context.Context) ([]*types.User, error)
 	InsertUsers(context.Context, *types.User) (*types.User, error)
@@ -27,11 +33,16 @@ type MongoUserStore struct {
 	coll   *mongo.Collection
 }
 
-func NewMongoUSerStore(client *mongo.Client) *MongoUserStore {
+func NewMongoUserStore(client *mongo.Client) *MongoUserStore {
 	return &MongoUserStore{
 		client: client,
 		coll:   client.Database(DBNAME).Collection(userColl),
 	}
+}
+
+func (s *MongoUserStore) Drop(ctx context.Context) error {
+	fmt.Println("--- dropping user collection")
+	return s.coll.Drop(ctx)
 }
 
 func (s *MongoUserStore) UpdateUsers(ctx context.Context, filter bson.M, params types.UpdateUserParams) error {
@@ -40,7 +51,7 @@ func (s *MongoUserStore) UpdateUsers(ctx context.Context, filter bson.M, params 
 			"$set", params.ToBSON(),
 		},
 	}
-	_, err := s.coll.UpdateOne(ctx, filter, update)
+	_, err := s.coll.UpdateOne(ctx, filter, update) // filter: who, update: what
 	if err != nil {
 		return err
 	}
