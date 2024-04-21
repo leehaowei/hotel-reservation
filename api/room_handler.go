@@ -65,7 +65,7 @@ func (h *RoomHandler) HandleBookRoom(c *fiber.Ctx) error {
 		})
 	}
 
-	ok, err = h.isRoomAvaliableForBooking(c.Context(), roomID, params)
+	ok, err = h.isRoomAvailableForBooking(c.Context(), roomID, params)
 	if err != nil {
 		return err
 	}
@@ -91,7 +91,7 @@ func (h *RoomHandler) HandleBookRoom(c *fiber.Ctx) error {
 	return c.JSON(inserted)
 }
 
-func (h *RoomHandler) isRoomAvaliableForBooking(ctx context.Context, roomID primitive.ObjectID, params BookRoomParams) (bool, error) {
+func (h *RoomHandler) isRoomAvailableForBooking(ctx context.Context, roomID primitive.ObjectID, params BookRoomParams) (bool, error) {
 	where := bson.M{
 		"roomID": roomID,
 		"fromDate": bson.M{
