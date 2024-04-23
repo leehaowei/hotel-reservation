@@ -14,6 +14,8 @@ const (
 	userColl = "users"
 )
 
+type Map map[string]any
+
 type Dropper interface {
 	Drop(context.Context) error
 }
@@ -21,12 +23,13 @@ type Dropper interface {
 // UserStore act as an abstraction layer of the db (dao/store)
 type UserStore interface {
 	Dropper
+
 	GetUserByEmail(context.Context, string) (*types.User, error)
 	GetUserByID(context.Context, string) (*types.User, error)
 	GetUsers(context.Context) ([]*types.User, error)
 	InsertUsers(context.Context, *types.User) (*types.User, error)
 	DeleteUsers(context.Context, string) error
-	UpdateUsers(ctx context.Context, filter bson.M, params types.UpdateUserParams) error
+	UpdateUsers(ctx context.Context, filter Map, params types.UpdateUserParams) error
 }
 
 type MongoUserStore struct {
@@ -46,9 +49,14 @@ func (s *MongoUserStore) Drop(ctx context.Context) error {
 	return s.coll.Drop(ctx)
 }
 
-func (s *MongoUserStore) UpdateUsers(ctx context.Context, filter bson.M, params types.UpdateUserParams) error {
-	update := bson.M{"$set": params}
-	_, err := s.coll.UpdateOne(ctx, filter, update) // filter: who, update: what
+func (s *MongoUserStore) UpdateUsers(ctx context.Context, filter Map, params types.UpdateUserParams) error {
+	oid, err := primitive.ObjectIDFromHex(filter["_id"].(string))
+	if err != nil {
+		return err
+	}
+	filter["_id"] = oid
+	update := bson.M{"$set": params.ToBSON()}
+	_, err = s.coll.UpdateOne(ctx, filter, update) // filter: who, update: what
 	if err != nil {
 		return err
 	}
