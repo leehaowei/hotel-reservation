@@ -1,7 +1,8 @@
-package middleware
+package api
 
 import (
 	"fmt"
+	"net/http"
 	"os"
 	"time"
 
@@ -15,9 +16,10 @@ func JWTAuthentication(userStore db.UserStore) fiber.Handler {
 		token := c.Get("X-Api-Token")
 		if len(token) == 0 {
 			fmt.Println("token not present in the header", token)
-			return fmt.Errorf("unautherized")
+			_ = NewError(100, "dd")
+			return ErrUnauthorized()
 		}
-		claims, err := validateToek(token)
+		claims, err := validateToken(token)
 		if err != nil {
 			return err
 		}
@@ -25,12 +27,12 @@ func JWTAuthentication(userStore db.UserStore) fiber.Handler {
 		expires := int64(expiresFloat)
 		// Chenck token expiration
 		if time.Now().Unix() > expires {
-			return fmt.Errorf("token expired")
+			return NewError(http.StatusUnauthorized, "token expired")
 		}
 		userID := claims["id"].(string)
 		user, err := userStore.GetUserByID(c.Context(), userID)
 		if err != nil {
-			return fmt.Errorf("unautherized")
+			return ErrUnauthorized()
 		}
 		// Set the current authenticated user ti the context.
 		c.Context().SetUserValue("user", user)
@@ -38,29 +40,29 @@ func JWTAuthentication(userStore db.UserStore) fiber.Handler {
 	}
 }
 
-func validateToek(tokenStr string) (jwt.MapClaims, error) {
+func validateToken(tokenStr string) (jwt.MapClaims, error) {
 	token, err := jwt.Parse(tokenStr, func(token *jwt.Token) (interface{}, error) {
 		// Don't forget to validate the alg is what you expect:
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 			fmt.Println("invalid signing method", token.Header["alg"])
-			return nil, fmt.Errorf("unauthorized")
+			return nil, ErrUnauthorized()
 		}
 		secret := os.Getenv("JWT_SECRET")
 		return []byte(secret), nil
 	})
 	if err != nil {
 		fmt.Println("failed to parse JWT token:", err)
-		return nil, fmt.Errorf("unauthorized")
+		return nil, ErrUnauthorized()
 	}
 
 	if !token.Valid {
 		fmt.Println("invalid token:")
-		return nil, fmt.Errorf("unauthorized")
+		return nil, ErrUnauthorized()
 	}
 
 	claims, ok := token.Claims.(jwt.MapClaims)
 	if !ok {
-		return nil, fmt.Errorf("unauthorized")
+		return nil, ErrUnauthorized()
 	}
 
 	return claims, nil
